@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<title>dev · convert keyboard.obj</title>
+<style>body{background:#111;color:#ddd;font:13px/1.5 monospace;padding:20px}button{padding:8px 16px}</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}</script>
+</head>
+<body>
+<p>Converts <b>_src/keyboard.obj</b> → <b>assets/keyboard.bin + keyboard.json</b> (quantized, indexed, one part per OBJ object / material).</p>
+<button id="go">convert + save assets</button>
+<pre id="log"></pre>
+<script type="module">
+import * as THREE from 'three';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const log = s => { document.getElementById('log').textContent += s + '\n'; };
+// 1u key pitch in the model = 52.95 units = 19.05 mm  →  scene unit = 1 cm·10 (1 mm = 0.01)
+const S = 0.01 / (52.95 / 19.05);
+
+async function convert() {
+  const text = await fetch('../_src/keyboard.obj').then(r => r.text());
+  const root = new OBJLoader().parse(text);
+  const meshes = []; root.traverse(o => o.isMesh && meshes.push(o));
+
+  // whole-model bounds → origin at the case's bottom centre
+  const box = new THREE.Box3().setFromObject(root);
+  const off = new THREE.Vector3((box.min.x + box.max.x) / 2, box.min.y, (box.min.z + box.max.z) / 2);
+
+  const parts = [], chunks = []; let byte = 0;
+  const push = (arr) => { const pad = (4 - (byte % 4)) % 4; if (pad) { chunks.push(new Uint8Array(pad)); byte += pad; } const at = byte; chunks.push(new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength)); byte += arr.byteLength; return at; };
+
+  for (const m of meshes) {
+    const mats = Array.isArray(m.material) ? m.material : [m.material];
+    const groups = m.geometry.groups.length ? m.geometry.groups : [{ start: 0, count: m.geometry.attributes.position.count, materialIndex: 0 }];
+    for (const gr of groups) {
+      let g = new THREE.BufferGeometry();
+      for (const a of ['position', 'normal']) {
+        const src = m.geometry.attributes[a];
+        g.setAttribute(a, new THREE.BufferAttribute(src.array.slice(gr.start * 3, (gr.start + gr.count) * 3), 3));
+      }
+      g.applyMatrix4(new THREE.Matrix4().makeTranslation(-off.x, -off.y, -off.z));
+      g.scale(S, S, S);
+      g = mergeVertices(g, 1e-5);
+      g.computeBoundingBox();
+      const bb = g.boundingBox, c = bb.getCenter(new THREE.Vector3());
+      g.translate(-c.x, -c.y, -c.z); g.computeBoundingBox();
+      const min = g.boundingBox.min.toArray(), size = g.boundingBox.getSize(new THREE.Vector3()).toArray();
+      const P = g.attributes.position, N = g.attributes.normal, n = P.count;
+      const q = new Uint16Array(n * 3), nn = new Int8Array(n * 4);
+      for (let i = 0; i < n; i++) {
+        for (let k = 0; k < 3; k++) {
+          q[i * 3 + k] = Math.round((P.array[i * 3 + k] - min[k]) / (size[k] || 1) * 65535);
+          nn[i * 4 + k] = Math.round(N.array[i * 3 + k] * 127);
+        }
+      }
+      const idx = g.index.array, idx32 = n > 65535;
+      const I = idx32 ? new Uint32Array(idx) : new Uint16Array(idx);
+      const mat = mats[gr.materialIndex]?.name || 'Mat';
+      const name = groups.length > 1 ? `${m.name}#${mat}` : m.name;
+      parts.push({ name, mat, center: c.toArray().map(v => +v.toFixed(5)), min, size, count: n, indexCount: I.length, idx32,
+        pos: push(q), nrm: push(nn), idx: push(I) });
+      log(`${name.padEnd(22)} ${mat.padEnd(6)} v=${n} t=${I.length / 3} size=${size.map(v => v.toFixed(3)).join(',')}`);
+    }
+  }
+  const total = new Uint8Array(byte); let o = 0; for (const ch of chunks) { total.set(ch, o); o += ch.length; }
+  const manifest = { scale: S, bounds: { min: box.min.clone().sub(off).multiplyScalar(S).toArray(), max: box.max.clone().sub(off).multiplyScalar(S).toArray() }, parts };
+  await fetch('/save?file=keyboard.bin', { method: 'POST', body: total });
+  await fetch('/save?file=keyboard.json', { method: 'POST', body: JSON.stringify(manifest) });
+  log(`\nsaved: ${(byte / 1024).toFixed(0)} KB, ${parts.length} parts`);
+  window.__done = true;
+}
+document.getElementById('go').onclick = () => convert().catch(e => log('ERR ' + e.stack));
+</script>
+</body>
+</html>

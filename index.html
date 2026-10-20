@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>K61 — Анатомія клацання</title>
+<meta name="description" content="Інтерактивна 3D-історія механічної клавіатури: розбираємо 60% клавіатуру до пружини — кейкапи, світчі, стабілізатори, пластина, шумоізоляція, плата. Концепт для портфоліо.">
+<meta name="theme-color" content="#06070a">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='3' width='26' height='26' rx='7' fill='none' stroke='%233d6bff' stroke-width='2'/%3E%3Cpath d='M16 9v14M9 16h14' stroke='%233d6bff' stroke-width='3'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="preload" href="assets/keyboard.bin" as="fetch" crossorigin>
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}</script>
+</head>
+<body class="is-loading">
+
+<!-- ============ preloader ============ -->
+<div class="loader" id="loader" aria-live="polite">
+  <svg class="loader__key" viewBox="0 0 120 120" aria-hidden="true">
+    <rect x="10" y="10" width="100" height="100" rx="22" />
+    <rect x="30" y="26" width="60" height="58" rx="12" />
+    <path d="M60 44v22M49 55h22" />
+  </svg>
+  <div class="loader__meta">
+    <span class="mono">Збираємо клавіатуру</span>
+    <span class="loader__pct mono"><b id="pct">0</b>%</span>
+  </div>
+  <div class="loader__bar"><i id="bar"></i></div>
+</div>
+
+<!-- ============ background layers ============ -->
+<div class="bg" aria-hidden="true">
+  <div class="bg__glow"></div>
+  <svg class="bg__rings" viewBox="-500 -500 1000 1000">
+    <circle r="160" /><circle r="250" /><circle r="345" class="dash" /><circle r="450" />
+  </svg>
+  <div class="bg__grain"></div>
+</div>
+<canvas id="stage" aria-label="3D-модель механічної клавіатури, що реагує на курсор і на натискання клавіш"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+
+<div class="hotspots" id="hotspots" aria-hidden="true"></div>
+
+<!-- ============ chrome ============ -->
+<header class="nav">
+  <a href="#top" class="nav__logo" data-scroll="#top" aria-label="На початок">
+    <svg viewBox="0 0 32 32"><rect x="3" y="3" width="26" height="26" rx="7"/><path d="M16 10v12M10 16h12"/></svg>
+    <span>K61</span>
+  </a>
+  <nav class="nav__links" aria-label="Розділи">
+    <a href="#history" data-scroll="#history">Історія</a>
+    <a href="#keycaps" data-scroll="#keycaps">Кейкапи</a>
+    <a href="#switches" data-scroll="#switches">Світчі</a>
+    <a href="#foam" data-scroll="#foam">Шумоізоляція</a>
+    <a href="#pcb" data-scroll="#pcb">Плата</a>
+    <a href="#rgb" data-scroll="#rgb">RGB</a>
+    <a href="#colors" data-scroll="#colors">Кольори</a>
+  </nav>
+  <button class="btn btn--ghost btn--sm magnetic sound-btn" id="soundBtn" aria-pressed="false">
+    <svg viewBox="0 0 24 24" class="sound-btn__icon"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path class="wave" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path class="mute" d="m16 9 6 6m0-6-6 6"/></svg>
+    <span>Звук</span>
+  </button>
+</header>
+
+<aside class="rail" aria-hidden="true">
+  <div class="rail__track"><i id="railFill"></i></div>
+  <ol class="rail__dots" id="railDots"></ol>
+</aside>
+
+<div class="hud mono" aria-hidden="true">
+  <span id="hudChapter">00 — Вступ</span>
+  <span class="hud__sep"></span>
+  <span id="hudPct">000</span>
+</div>
+
+<div class="keytoast mono" id="keytoast" aria-hidden="true"></div>
+
+<div class="cursor" id="cursor" aria-hidden="true"><i></i><span id="cursorLabel"></span></div>
+
+<!-- ============ story ============ -->
+<main id="top">
+
+  <section class="sec hero" data-scene="hero" data-title="Вступ">
+    <div class="wrap">
+      <p class="eyebrow reveal"><i></i>Механічна клавіатура · 60% · 61 клавіша</p>
+      <h1 class="hero__title">
+        <span class="line"><span>Анатомія</span></span>
+        <span class="line"><span><em>клацання</em></span></span>
+      </h1>
+      <p class="hero__lead reveal">Між пальцем і буквою на екрані — сім шарів інженерії й 61 RGB-світлодіод. Натисніть будь-яку клавішу на своїй клавіатурі — ця відповість. Гортайте — і ми розберемо її до останньої пружини.</p>
+      <div class="hero__cta reveal">
+        <a href="#keycaps" class="btn btn--blue magnetic" data-scroll="#keycaps"><span>Розібрати клавіатуру</span><svg viewBox="0 0 24 24"><path d="M12 4v16m0 0-6-6m6 6 6-6"/></svg></a>
+        <a href="#history" class="btn btn--ghost magnetic" data-scroll="#history"><span>Трохи історії</span></a>
+      </div>
+    </div>
+    <dl class="hero__stats reveal">
+      <div><dt>Клавіш</dt><dd>61</dd></div>
+      <div><dt>Шарів</dt><dd>7</dd></div>
+      <div><dt>Кольорів</dt><dd>16,7 <small>млн</small></dd></div>
+    </dl>
+    <div class="scroll-hint mono" aria-hidden="true"><span>Гортайте</span><i></i></div>
+  </section>
+
+  <section class="sec sec--right" id="history" data-scene="history" data-title="Історія">
+    <div class="panel">
+      <p class="eyebrow reveal"><i></i>01 — Звідки клавіша</p>
+      <h2 class="h2 split">Півтора століття <em>до</em> цього клацання</h2>
+      <p class="lead reveal">Розкладка, хід клавіші, навіть звук, який нам подобається, — усе це спадок машин, що важили по двадцять кілограмів.</p>
+      <ol class="timeline">
+        <li class="reveal"><b>1868</b><div><h3>Друкарська машинка Шоулза</h3><p>Крістофер Шоулз патентує машинку, з якої згодом виросте розкладка QWERTY — ми друкуємо нею досі.</p></div></li>
+        <li class="reveal"><b>1985</b><div><h3>IBM Model M</h3><p>Пружина, що «ламається» під пальцем, і клік, який чути в сусідній кімнаті. Багато екземплярів працюють і сьогодні.</p></div></li>
+        <li class="reveal"><b>1985</b><div><h3>Cherry MX</h3><p>Шток із хрестиком «+» стає стандартом: під нього й досі роблять майже всі кейкапи світу.</p></div></li>
+        <li class="reveal"><b>2010-ті</b><div><h3>Кастомні клавіатури</h3><p>Hot-swap, gasket mount, групові закупівлі кейкапів — клавіатуру збирають як конструктор, під свій звук і відчуття.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="sec sec--left sec--tall" id="layout" data-scene="layout" data-title="Розкладка">
+    <div class="panel">
+      <p class="eyebrow reveal"><i></i>02 — Розкладка 60%</p>
+      <h2 class="h2 split">Усе потрібне — <em>нічого</em> зайвого</h2>
+      <p class="lead reveal">Без F-ряду, стрілок і цифрового блоку: вони живуть на другому шарі під клавішею Fn. Миша ближче, плечі ширше, на столі — більше місця.</p>
+      <dl class="spec-list reveal">
+        <div><dt>1u — ширина звичайної клавіші</dt><dd>19,05 мм</dd></div>
+        <div><dt>Пробіл</dt><dd>6,25u</dd></div>
+        <div><dt>Ширина клавіатури</dt><dd>≈ 29 см</dd></div>
+      </dl>
+      <p class="body reveal" style="margin-top:18px">Наведіть на мітки. Клацніть по кейкапу мишею — він натиснеться.</p>
+    </div>
+  </section>
+
+  <section class="sec sec--right" id="keycaps" data-scene="keycaps" data-title="Кейкапи">
+    <div class="panel panel--glass">
+      <p class="eyebrow reveal"><i></i>03 — Кейкапи</p>
+      <h2 class="h2 split">Шістдесят один <em>ковпачок</em></h2>
+      <p class="lead reveal">Кейкап — те, чого торкаються пальці. Пластик, профіль і товщина стінок змінюють і відчуття, і звук.</p>
+      <ul class="pros reveal">
+        <li><b>PBT</b><span>Матовий, не блищить роками, звучить нижче й глухіше.</span></li>
+        <li><b>ABS</b><span>Яскраві кольори, гладкий — але з часом «засалюється».</span></li>
+        <li><b>Doubleshot</b><span>Літера відлита другим шаром пластику — не зітреться ніколи.</span></li>
+      </ul>
+      <ul class="chips reveal"><li>Латиниця + кирилиця</li><li>Лайн-арт на модифікаторах</li><li>Скульптурний профіль</li><li>Стінки 1,5 мм</li></ul>
+    </div>
+  </section>
+
+  <section class="sec sec--left" id="switches" data-scene="switches" data-title="Світчі">
+    <div class="panel">
+      <p class="eyebrow reveal"><i></i>04 — Перемикачі</p>
+      <h2 class="h2 split">Під кожною клавішею — <em>окремий</em> механізм</h2>
+      <p class="lead reveal">61 світч, і кожен можна витягнути пінцетом без паяльника — плата hot-swap. Оберіть тип і натисніть клавішу.</p>
+      <div class="sw-types reveal" role="radiogroup" aria-label="Тип перемикача">
+        <button class="sw-type is-active" role="radio" aria-checked="true" data-type="linear" style="--c:#e2b23b"><i></i><span>Лінійний</span></button>
+        <button class="sw-type" role="radio" aria-checked="false" data-type="tactile" style="--c:#8a5534"><i></i><span>Тактильний</span></button>
+        <button class="sw-type" role="radio" aria-checked="false" data-type="clicky" style="--c:#2f62ff"><i></i><span>Клікаючий</span></button>
+      </div>
+      <figure class="curve reveal">
+        <svg viewBox="0 0 320 150" id="curve" aria-label="Графік сили натискання">
+          <g class="curve__grid"><path d="M30 10V125H312"/><path d="M30 70H312" class="dim"/><path d="M170 10V125" class="act"/></g>
+          <path id="curvePath" class="curve__line" d=""/>
+          <circle id="curveDot" r="4.5" cx="30" cy="125"/>
+          <text x="26" y="142">0</text><text x="166" y="142">2</text><text x="290" y="142">4 мм</text>
+          <text x="0" y="74">50г</text>
+          <text x="176" y="20" class="act">спрацювання</text>
+        </svg>
+        <figcaption><b id="swName">Лінійний</b> · <span id="swForce">45</span> г · <span id="swDesc">Плавний хід без перешкод — для швидкого набору та ігор.</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="sec sec--right sec--tall" id="anatomy" data-scene="anatomy" data-title="Світч">
+    <div class="panel panel--glass">
+      <p class="eyebrow reveal"><i></i>05 — Анатомія світча</p>
+      <h2 class="h2 split">П'ять деталей і <em>чотири</em> міліметри</h2>
+      <p class="lead reveal">Шток іде вниз, пружина стискається, на двох міліметрах ніжка штока відпускає латунну пластину — контакти замикаються. Клавіша спрацювала ще до того, як ви натиснули до упору.</p>
+      <dl class="spec-list reveal">
+        <div><dt>Спрацювання</dt><dd>2,0 мм</dd></div>
+        <div><dt>Повний хід</dt><dd>4,0 мм</dd></div>
+        <div><dt>Ресурс</dt><dd>50–100 млн натискань</dd></div>
+      </dl>
+      <div class="travel mono reveal"><span>Хід</span><div class="travel__bar"><i id="travelFill"></i><b></b></div><span><em id="travel">0.0</em> мм</span></div>
+    </div>
+  </section>
+
+  <section class="sec sec--left" id="stabs" data-scene="stabs" data-title="Стабілізатори">
+    <div class="panel">
+      <p class="eyebrow reveal"><i></i>06 — Стабілізатори</p>
+      <h2 class="h2 split">Щоб пробіл <em>не</em> хитався</h2>
+      <p class="lead reveal">Довгу клавішу легко натиснути за край — і вона перекоситься. Тому під пробілом, Enter, Shift і Backspace стоять стабілізатори: два додаткові штоки, з'єднані сталевим дротом.</p>
+      <p class="body reveal">Дріт змащують густим мастилом, а корпуси «підклеюють» — інакше він деренчить. Від цього, без перебільшення, залежить половина звуку пробілу.</p>
+      <ul class="chips reveal"><li>5 стабілізаторів</li><li>Plate-mount</li><li>Змащений дріт</li></ul>
+    </div>
+  </section>
+
+  <section class="sec sec--right" id="plate" data-scene="plate" data-title="Пластина">
+    <div class="panel panel--glass">
+      <p class="eyebrow reveal"><i></i>07 — Пластина й gasket mount</p>
+      <h2 class="h2 split">Пластина, що <em>пливе</em></h2>
+      <p class="lead reveal">Алюмінієва пластина 1,5 мм тримає всі світчі на однаковій висоті. Вона не прикручена до корпусу — лежить на м'яких прокладках-gasket'ах, тож при наборі ледь помітно пружинить.</p>
+      <dl class="spec-list reveal">
+        <div><dt>Алюміній</dt><dd>дзвінкіше, жорсткіше</dd></div>
+        <div><dt>Латунь</dt><dd>важка, «металевий» звук</dd></div>
+        <div><dt>FR-4 / POM / PC</dt><dd>м'якше, глибше</dd></div>
+      </dl>
+      <p class="body reveal" style="margin-top:18px">Тонкі прорізи по краях — flex cuts: вони роблять пластину ще гнучкішою.</p>
+    </div>
+  </section>
+
+  <section class="sec sec--left sec--tall" id="foam" data-scene="foam" data-title="Шумоізоляція">
+    <div class="panel">
+      <p class="eyebrow reveal"><i></i>08 — Шумоізоляція</p>
+      <h2 class="h2 split">Три шари <em>тиші</em></h2>
+      <p class="lead reveal">Порожній корпус — це резонатор, як у гітари. Піна заповнює порожнечі й гасить дзвін, і з клацання лишається глибоке «тук». Вимкніть шари — і послухайте, натискаючи клавіші.</p>
+      <div class="foams">
+        <button class="foam is-on reveal" data-foam="plateFoam" aria-pressed="true"><i class="foam__sw"></i><span><b>Plate foam</b><small>Poron 3,5 мм між пластиною і платою — прибирає металевий дзвін</small></span></button>
+        <button class="foam is-on reveal" data-foam="pe" aria-pressed="true"><i class="foam__sw"></i><span><b>PE-плівка</b><small>0,5 мм поліетилену під світчами — звук стає «попкорновим», вищим</small></span></button>
+        <button class="foam is-on reveal" data-foam="caseFoam" aria-pressed="true"><i class="foam__sw"></i><span><b>Case foam</b><small>Шар на дні корпусу — гасить гул порожнечі</small></span></button>
+      </div>
+      <button class="btn btn--ghost btn--sm reveal sound-inline" data-sound><span>Увімкнути звук</span></button>
+    </div>
+  </section>
+
+  <section class="sec sec--right sec--tall" id="pcb" data-scene="pcb" data-title="Плата">
+    <div class="panel panel--glass">
+      <p class="eyebrow reveal"><i></i>09 — Друкована плата</p>
+      <h2 class="h2 split">Мозок: <em>тисяча</em> опитувань на секунду</h2>
+      <p class="lead reveal">Світчі стоять у матриці 5 × 14. Контролер подає сигнал по одній колонці й слухає рядки — так 61 клавішу обслуговують 19 доріжок. Діод біля кожного світча не дає сигналу піти в обхід, тож працюють навіть 6–10 одночасних натискань.</p>
+      <dl class="spec-list reveal">
+        <div><dt>Контролер</dt><dd>RP2040 · 133 МГц</dd></div>
+        <div><dt>Прошивка</dt><dd>QMK / VIA</dd></div>
+        <div><dt>Роз'єм</dt><dd>USB-C</dd></div>
+        <div><dt>Колонка зараз</dt><dd class="mono" id="scanCol">—</dd></div>
+      </dl>
+      <p class="body reveal" style="margin-top:18px">Затисніть клавішу — і побачите, як підсвітяться її рядок і колонка.</p>
+    </div>
+  </section>
+
+  <section class="sec sec--left sec--tall" id="rgb" data-scene="rgb" data-title="RGB">
+    <div class="panel panel--glass">
+      <p class="eyebrow reveal"><i></i>10 — RGB: як це працює</p>
+      <h2 class="h2 split">61 світлодіод <em>в одному</em> ланцюжку</h2>
+      <p class="lead reveal">Під кожним світчем — адресний світлодіод SK6812 MINI-E: три кристали (R, G, B) і драйвер у корпусі 3,2 × 2,8 мм. Світить угору — крізь віконце світча й щілини між кейкапами.</p>
+      <ol class="strokes strokes--compact" id="rgbSteps">
+        <li><b>01</b><span>Кадр</span><small>контролер готує по 24 біти на клавішу: 8 — червоний, 8 — зелений, 8 — синій</small></li>
+        <li><b>02</b><span>Ланцюжок</span><small>одна доріжка даних: кожен LED забирає свої 24 біти, решту передає далі (DIN → DOUT) — це й видно на анімації</small></li>
+        <li><b>03</b><span>ШІМ</span><small>яскравість — це дуже швидке мерехтіння; 256 рівнів на канал = 16,7 млн кольорів</small></li>
+        <li><b>04</b><span>Знову</span><small>61 × 24 біти на 800 кГц ≈ 1,8 мс — кадр оновлюється сотні разів на секунду</small></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="sec sec--right" id="case" data-scene="case" data-title="Корпус">
+    <div class="panel panel--glass">
+      <p class="eyebrow reveal"><i></i>11 — Корпус</p>
+      <h2 class="h2 split">Брусок <em>алюмінію</em></h2>
+      <p class="lead reveal">Корпус фрезерують на ЧПК із цільного бруска, потім анодують. Він важкий навмисно: маса гасить вібрації, а клавіатура не їздить столом.</p>
+      <div class="facts">
+        <div class="fact reveal"><span class="fact__num" data-count="6063">6063</span><span class="fact__cap">марка алюмінію</span></div>
+        <div class="fact reveal"><span class="fact__num" data-count="1.2" data-dec="1">1,2</span><span class="fact__cap">кг у зборі</span></div>
+        <div class="fact reveal"><span class="fact__num" data-count="23">23</span><span class="fact__cap">мм висота корпусу</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec sec--left" id="specs" data-scene="specs" data-title="Дані">
+    <div class="panel panel--wide">
+      <p class="eyebrow reveal"><i></i>12 — Збираємо назад</p>
+      <h2 class="h2 split">У цифрах</h2>
+      <div class="specs">
+        <div class="spec reveal"><span class="spec__num"><b data-count="61">61</b><small>клавіша</small></span><span class="spec__cap">60% ANSI</span></div>
+        <div class="spec reveal"><span class="spec__num"><b data-count="7">7</b><small>шарів</small></span><span class="spec__cap">від кейкапа до корпусу</span></div>
+        <div class="spec reveal"><span class="spec__num"><b data-count="4">4</b><small>мм</small></span><span class="spec__cap">повний хід клавіші</span></div>
+        <div class="spec reveal"><span class="spec__num"><b data-count="1000">1000</b><small>Гц</small></span><span class="spec__cap">частота опитування</span></div>
+        <div class="spec reveal"><span class="spec__num"><b data-count="61">61</b><small>LED</small></span><span class="spec__cap">адресна RGB-підсвітка</span></div>
+        <div class="spec reveal"><span class="spec__num"><b data-count="16.7" data-dec="1">16,7</b><small>млн</small></span><span class="spec__cap">кольорів на клавішу</span></div>
+        <div class="spec reveal"><span class="spec__num"><b data-count="0">0</b><small>паяльників</small></span><span class="spec__cap">щоб замінити світч</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec sec--right" id="lights" data-scene="lights" data-title="Підсвітка">
+    <div class="panel panel--glass">
+      <p class="eyebrow reveal"><i></i>13 — Підсвітка</p>
+      <h2 class="h2 split">Світло, що <em>реагує</em></h2>
+      <p class="lead reveal">Ефект — це формула в прошивці: колір кожного світлодіода рахується заново сотні разів на секунду. Оберіть ефект і понатискайте клавіші.</p>
+      <div class="rgb-modes reveal" role="radiogroup" aria-label="Ефект підсвітки">
+        <button class="rgb-mode is-active" role="radio" aria-checked="true" data-mode="rainbow">Веселка</button>
+        <button class="rgb-mode" role="radio" aria-checked="false" data-mode="reactive">Реакція</button>
+        <button class="rgb-mode" role="radio" aria-checked="false" data-mode="breathing">Дихання</button>
+        <button class="rgb-mode" role="radio" aria-checked="false" data-mode="static">Свій колір</button>
+        <button class="rgb-mode" role="radio" aria-checked="false" data-mode="off">Вимк.</button>
+      </div>
+      <div class="mixer reveal">
+        <div class="mixer__chip" id="mixChip"><i></i><span class="mono" id="mixHex">#FF3CB4</span></div>
+        <label class="mixer__row" style="--c:#ff3b4e"><span class="mono">R</span><input type="range" min="0" max="255" value="255" data-ch="0"><b class="mono">255</b></label>
+        <label class="mixer__row" style="--c:#38e07b"><span class="mono">G</span><input type="range" min="0" max="255" value="60" data-ch="1"><b class="mono">60</b></label>
+        <label class="mixer__row" style="--c:#3d7bff"><span class="mono">B</span><input type="range" min="0" max="255" value="180" data-ch="2"><b class="mono">180</b></label>
+        <label class="mixer__row mixer__row--bright" style="--c:#eef1f7"><span class="mono">☀</span><input type="range" min="0" max="100" value="100" id="rgbBright"><b class="mono">100%</b></label>
+      </div>
+      <p class="body reveal" style="margin-top:16px">Три повзунки — це буквально три кристали всередині кожного світлодіода. Будь-який колір — суміш червоного, зеленого й синього.</p>
+    </div>
+  </section>
+
+  <section class="sec sec--center" id="colors" data-scene="colors" data-title="Кольори">
+    <div class="panel panel--bottom">
+      <p class="eyebrow reveal"><i></i>14 — Ваша K61</p>
+      <h2 class="h2 split">Оберіть <em>кейкапи</em></h2>
+      <div class="swatches reveal" role="radiogroup" aria-label="Набір кейкапів">
+        <button class="swatch is-active" role="radio" aria-checked="true" data-cw="graphite" style="--a:#1e1f23;--b:#ff4fa3"><i></i><span>Графіт RGB</span></button>
+        <button class="swatch" role="radio" aria-checked="false" data-cw="cobalt" style="--a:#26272c;--b:#2150fc"><i></i><span>Кобальт</span></button>
+        <button class="swatch" role="radio" aria-checked="false" data-cw="milk" style="--a:#e7e4dc;--b:#9aa0ab"><i></i><span>Молоко</span></button>
+        <button class="swatch" role="radio" aria-checked="false" data-cw="retro" style="--a:#d8ceb6;--b:#c4432c"><i></i><span>Ретро</span></button>
+
+        <button class="swatch" role="radio" aria-checked="false" data-cw="lilac" style="--a:#d6d1e8;--b:#6b5fa6"><i></i><span>Лаванда</span></button>
+      </div>
+      <p class="typed mono reveal" aria-live="polite"><span id="typed"></span><i></i></p>
+    </div>
+  </section>
+
+  <footer class="sec footer" data-scene="footer" data-title="Контакт">
+    <div class="wrap footer__inner">
+      <p class="eyebrow reveal"><i></i>Концепт · Дизайн · Розробка</p>
+      <h2 class="footer__title split">Маєте продукт, що заслуговує на <em>таку ж</em> подачу?</h2>
+      <a href="#" class="btn btn--blue btn--lg magnetic" id="contactBtn"><span>Обговорити проєкт</span><svg viewBox="0 0 24 24"><path d="M5 12h14m0 0-6-6m6 6-6 6"/></svg></a>
+      <div class="footer__bottom mono">
+        <span>© 2026 Dima Nikitchenko — портфоліо</span>
+        <span>Three.js · WebGL · Web Audio · GSAP</span>
+        <span>K61 — вигаданий концепт. Cherry MX, IBM, RP2040 — торгові марки відповідних власників.</span>
+      </div>
+    </div>
+  </footer>
+</main>
+
+<noscript><p class="noscript">Для 3D-досвіду потрібен JavaScript.</p></noscript>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/SplitText.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
